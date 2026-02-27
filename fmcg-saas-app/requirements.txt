@@ -1,0 +1,45 @@
+# # FMCG SaaS Platform - Production Requirements
+
+# # Core
+# streamlit==1.31.0
+# pandas==2.1.4
+# numpy==1.24.3
+
+# # Data Processing
+# openpyxl==3.1.2
+# xlrd==2.0.1
+
+# # ML Models (for your integration)
+# prophet==1.1.5
+# xgboost==2.0.3
+# scikit-learn==1.4.0
+
+# # Database (optional - for production)
+# sqlalchemy==2.0.25
+# psycopg2-binary==2.9.9
+
+# # AI/Chatbot
+# anthropic==0.18.0
+
+# # Visualization
+# plotly==5.18.0
+# altair==5.2.0
+
+# # Utilities
+# python-dotenv==1.0.0
+
+streamlit
+pandas
+numpy
+openpyxl
+xlrd
+prophet
+xgboost
+scikit-learn
+sqlalchemy
+psycopg2-binary
+anthropic
+plotly
+altair
+python-dotenv
+
