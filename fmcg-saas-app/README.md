@@ -1,257 +1,277 @@
-# FMCG SaaS Platform - Production Ready Code
+# FMCG SaaS Platform - Production Ready
 
-## 🎯 What This Is
+A complete, production-ready FMCG (Fast-Moving Consumer Goods) analytics platform built with Streamlit, featuring real Prophet-based demand forecasting, AI-powered insights, and database persistence.
 
-This is the **complete, production-ready Streamlit application** that matches the wireframe design exactly.
-You can run this locally, integrate your ML models, and deploy to production.
+## 🚀 Features
 
-## 🚀 Quick Start (3 Commands!)
+### Real Machine Learning
+- **Prophet Forecasting**: Facebook Prophet for accurate demand prediction with seasonality
+- **Confidence Intervals**: 80% prediction intervals with uncertainty quantification
+- **Automatic Fallback**: Statistical methods when Prophet unavailable
+- **Multi-dimensional**: Forecast by product, region, or aggregate
 
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+### AI-Powered Analytics
+- **Groq LLM Integration**: Fast, accurate responses using Llama 3.1
+- **Context-Aware**: Chatbot understands your actual data
+- **Actionable Insights**: Specific recommendations based on your metrics
+- **Smart Fallbacks**: Works even without API key
 
-# 2. Run the app
-streamlit run app.py
+### Database Persistence
+- **PostgreSQL**: Full support for Supabase, Neon, or self-hosted
+- **Company Profiles**: Store onboarding and settings
+- **Forecast History**: Track predictions over time
+- **Inventory Alerts**: Persistent stockout warnings
+- **Session Fallback**: Works without database
 
-# 3. Open browser
-# Automatically opens at http://localhost:8501
+### Professional UI
+- **Modern Design**: Clean, intuitive interface
+- **Interactive Charts**: Plotly visualizations
+- **Responsive**: Works on desktop and mobile
+- **Real-time Updates**: Live data processing
+
+## 📊 Screenshots
+
+### Dashboard
+Real-time KPIs, alerts, and insights from your data
+
+### Forecasting
+Prophet-based demand predictions with confidence intervals
+
+### Inventory Management
+Stockout alerts and reorder recommendations
+
+### AI Assistant
+Context-aware chatbot for operational insights
+
+## 🎯 Quick Start
+
+### Deploy to Streamlit Cloud (5 minutes)
+
+1. **Fork this repository**
+
+2. **Get API Keys** (both free):
+   - Groq: [console.groq.com](https://console.groq.com)
+   - Supabase: [supabase.com](https://supabase.com) (optional)
+
+3. **Deploy**:
+   - Go to [share.streamlit.io](https://share.streamlit.io)
+   - Click "New app"
+   - Select your repo, set main file: `fmcg-saas-app/app.py`
+   - Add secrets (see below)
+   - Deploy!
+
+4. **Streamlit Secrets** (Advanced Settings):
+```toml
+GROQ_API_KEY = "your_groq_api_key"
+GROQ_MODEL = "llama-3.1-8b-instant"
+DATABASE_URL = "postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres"
 ```
 
-**That's it! Your app is running!** 🎉
+5. **Upload Sample Data**:
+   - Use `data/sales_orders_complete.csv`
+   - Map columns automatically
+   - Start analyzing!
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+### Local Development
+
+```bash
+# Clone and setup
+git clone <your-repo>
+cd fmcg-saas-app
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Configure
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run
+streamlit run app.py
+```
 
 ## 📁 Project Structure
 
 ```
 fmcg-saas-app/
-├── app.py                      # Main entry point
-├── pages/                      # All page modules
-│   ├── landing.py             # Landing page
-│   ├── onboarding.py          # Industry selection
-│   ├── services.py            # Services selection (Active vs Coming Soon)
-│   ├── upload_data.py         # File upload + schema mapping
-│   ├── dashboard.py           # Main dashboard
-│   ├── forecasting.py         # Demand forecasting page
-│   ├── inventory.py           # Inventory optimization page
-│   ├── chatbot.py             # AI chatbot interface
-│   └── settings.py            # Settings page
-├── utils/                      # Utility modules
-│   ├── ml_models.py           # YOUR ML MODELS GO HERE
-│   └── chatbot.py             # YOUR CLAUDE API INTEGRATION
-├── data/                       # Data storage (created at runtime)
-├── requirements.txt            # Python dependencies
-└── README.md                   # This file
+├── app.py                 # Main application entry
+├── pages/                 # Streamlit pages
+│   ├── landing.py        # Landing page
+│   ├── onboarding.py     # Company registration
+│   ├── services.py       # Service selection
+│   ├── upload_data.py    # Data upload & mapping
+│   ├── dashboard.py      # Main dashboard
+│   ├── forecasting.py    # Demand forecasting
+│   ├── inventory.py      # Inventory management
+│   ├── chatbot.py        # AI assistant
+│   └── settings.py       # User settings
+├── utils/                 # Core utilities
+│   ├── analytics.py      # Data processing & KPIs
+│   ├── ml_models.py      # Prophet & forecasting
+│   ├── chatbot.py        # Groq integration
+│   ├── database.py       # PostgreSQL/Supabase
+│   └── session.py        # Session management
+├── data/                  # Sample datasets
+│   ├── sales_orders_complete.csv
+│   ├── inventory.csv
+│   └── ...
+├── .streamlit/
+│   └── config.toml       # Streamlit configuration
+├── requirements.txt       # Python dependencies
+├── .env.example          # Environment template
+├── DEPLOYMENT.md         # Deployment guide
+└── README.md             # This file
 ```
 
-## 🔧 Integration Points for YOUR Code
+## 🔧 Configuration
 
-### 1. ML Models (`utils/ml_models.py`)
+### Environment Variables
 
-**Demand Forecasting:**
-```python
-class DemandForecaster:
-    def train(self, sales_data):
-        # ADD YOUR PROPHET + LSTM CODE HERE
-        pass
-    
-    def predict(self, product_id, days_ahead):
-        # RETURN YOUR PREDICTIONS HERE
-        pass
-```
-
-**Inventory Optimization:**
-```python
-class InventoryOptimizer:
-    def train(self, inventory_data, sales_data):
-        # ADD YOUR XGBOOST CODE HERE
-        pass
-    
-    def calculate_reorder_points(self, product_id):
-        # RETURN YOUR RECOMMENDATIONS HERE
-        pass
-```
-
-### 2. Chatbot (`utils/chatbot.py`)
-
-```python
-class ChatbotService:
-    def get_response(self, user_query, company_data):
-        # ADD YOUR CLAUDE API CALLS HERE
-        # from anthropic import Anthropic
-        # client = Anthropic(api_key=self.api_key)
-        # response = client.messages.create(...)
-        pass
-```
-
-### 3. Environment Variables
-
-Create `.env` file:
 ```env
-ANTHROPIC_API_KEY=your_key_here
-DATABASE_URL=postgresql://localhost/fmcg
+# Required for AI features
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.1-8b-instant
+
+# Optional but recommended for persistence
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+
+# Optional
+DEBUG=True
 ```
 
-## 🎨 Features Implemented
+### Data Format
 
-### ✅ Working Features (Green Badges)
-- Landing page with industry selection
-- Company onboarding flow
-- Services selection (Active vs Coming Soon clearly marked)
-- **File upload with schema mapping** (THE critical feature!)
-- Dashboard with AI insights and alerts
-- Demand forecasting page (chart + metrics)
-- Inventory optimization page (status cards + recommendations)
-- AI chatbot interface (text, quick actions)
-- Settings page
+Upload CSV/XLSX files with these columns (auto-mapped):
 
-### 🎨 Design System
-- Colors match wireframe exactly
-- Status badges (Green = Active, Gray = Coming Soon)
-- Alert boxes (critical, info, success)
-- Metric cards
-- Feature cards with hover effects
-- Professional layout
+| Column | Description | Required |
+|--------|-------------|----------|
+| order_id | Unique order identifier | Yes |
+| order_date | Order date (YYYY-MM-DD) | Yes |
+| product_id | Product/SKU code | Yes |
+| region | Sales region/warehouse | Yes |
+| quantity | Order quantity | Yes |
+| unit_price | Price per unit | Yes |
+| total_amount | Total order value | Yes |
+| customer_id | Customer identifier | Optional |
+| discount_percent | Discount percentage | Optional |
 
-## 🔌 How to Integrate Your Models
+## 🎓 How It Works
 
-### Step 1: Train Your Models
-
-```python
-# In your jupyter notebook or script
-from utils.ml_models import demand_forecaster, inventory_optimizer
-
-# Train demand forecaster
-demand_forecaster.train(your_sales_data)
-
-# Train inventory optimizer
-inventory_optimizer.train(your_inventory_data, your_sales_data)
-
-# Save models (add save/load methods to classes)
+### 1. Onboarding Flow
+```
+Landing → Onboarding → Services → Upload Data → Dashboard
 ```
 
-### Step 2: Update the Integration Points
+### 2. Data Processing
+- Auto-detect column mappings
+- Normalize to standard schema
+- Validate and clean data
+- Merge multiple files
 
-Replace the mock data in:
-- `pages/forecasting.py` - Use `demand_forecaster.predict()`
-- `pages/inventory.py` - Use `inventory_optimizer.calculate_reorder_points()`
-- `pages/dashboard.py` - Use both models for insights
-
-### Step 3: Add Claude API
-
-```python
-# utils/chatbot.py
-from anthropic import Anthropic
-
-def get_response(self, user_query, company_data):
-    client = Anthropic(api_key=self.api_key)
-    
-    context = self._build_context(company_data)
-    
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1000,
-        messages=[{
-            "role": "user",
-            "content": f"{context}\n\nQuestion: {user_query}"
-        }]
-    )
-    
-    return response.content[0].text
+### 3. Forecasting Pipeline
+```
+Historical Data → Prophet Model → Seasonality Detection → 
+Trend Analysis → Confidence Intervals → Predictions
 ```
 
-## 📊 Running with Your Data
-
-1. **Start the app:** `streamlit run app.py`
-2. **Onboard:** Select FMCG industry
-3. **Upload data:** Upload your Excel/CSV files
-4. **Map columns:** Map your columns to standard schema
-5. **View dashboard:** See insights (currently mock data)
-6. **Integrate models:** Replace mock data with your trained models
-
-## 🚀 Deployment
-
-### Deploy to Streamlit Cloud (Free!)
-
-1. Push code to GitHub
-2. Go to streamlit.io/cloud
-3. Connect your repo
-4. Deploy!
-
-### Deploy to AWS/GCP
-
-```bash
-# Using Docker
-docker build -t fmcg-saas .
-docker run -p 8501:8501 fmcg-saas
+### 4. AI Context Building
+```
+Raw Data → KPIs → Insights → Alerts → 
+Context Payload → LLM → Actionable Response
 ```
 
-## 🔐 Production Checklist
+## 📈 Use Cases
 
-- [ ] Add actual database (PostgreSQL)
-- [ ] Implement authentication (Streamlit Auth or custom)
-- [ ] Add Claude API key
-- [ ] Train and integrate ML models
-- [ ] Add error handling and logging
-- [ ] Set up monitoring (Sentry)
-- [ ] Configure HTTPS
-- [ ] Add rate limiting
-- [ ] Backup strategy
-- [ ] CI/CD pipeline
+### Demand Forecasting
+- Predict demand for next 7/30/90 days
+- Identify seasonal patterns
+- Plan inventory replenishment
+- Optimize production schedules
 
-## 🐛 Troubleshooting
+### Inventory Optimization
+- Stockout risk alerts
+- Reorder point calculations
+- Safety stock recommendations
+- Overstock identification
 
-**Port already in use:**
-```bash
-streamlit run app.py --server.port 8502
-```
+### Sales Analytics
+- Revenue tracking by product/region
+- Top performer identification
+- Trend analysis
+- Performance insights
 
-**Module not found:**
-```bash
-pip install -r requirements.txt --upgrade
-```
+### Operational Intelligence
+- AI-powered Q&A on your data
+- Natural language queries
+- Automated recommendations
+- Real-time alerts
 
-**Streamlit not found:**
-```bash
-pip install streamlit
-```
+## 🛠️ Technology Stack
 
-## 💡 Tips
+- **Frontend**: Streamlit 1.31
+- **ML/Forecasting**: Prophet 1.1.5, XGBoost 2.0
+- **AI/LLM**: Groq (Llama 3.1)
+- **Database**: PostgreSQL (Supabase/Neon)
+- **Visualization**: Plotly 5.18
+- **Data Processing**: Pandas 2.1, NumPy 1.26
 
-1. **Development mode:** Run with `streamlit run app.py --server.runOnSave true`
-2. **Debug mode:** Add `st.write()` statements to debug
-3. **Custom theme:** Create `.streamlit/config.toml` for custom colors
-4. **Session state:** All data stored in `st.session_state`
-5. **File uploads:** Stored in `st.session_state.uploaded_files`
+## 🔒 Security & Privacy
 
-## 📝 Next Steps
+- No data leaves your control (except LLM API calls)
+- Database credentials encrypted in Streamlit secrets
+- Session-based authentication
+- Optional database persistence
+- HTTPS by default on Streamlit Cloud
 
-1. ✅ Run the app and explore all pages
-2. ✅ Upload sample data and test schema mapping
-3. ✅ Add your Prophet and XGBoost models to `utils/ml_models.py`
-4. ✅ Add your Claude API integration to `utils/chatbot.py`
-5. ✅ Test everything locally
-6. ✅ Deploy to Streamlit Cloud or your preferred platform
+## 📊 Sample Data
 
-## 🎯 What Makes This Production-Ready
+Included sample datasets in `data/`:
+- `sales_orders_complete.csv` - 1000+ orders across products/regions
+- `inventory.csv` - Current stock levels
+- `warehouses.csv` - Warehouse information
+- `suppliers.csv` - Supplier data
+- And more...
 
-- ✅ Complete feature implementation
-- ✅ Proper project structure
-- ✅ Clean separation of concerns (pages, utils)
-- ✅ Session state management
-- ✅ Error handling placeholders
-- ✅ Integration points clearly marked
-- ✅ Mock data for testing
-- ✅ Professional UI matching wireframe
-- ✅ Status badges (Active vs Coming Soon)
-- ✅ Ready for deployment
+## 🚀 Roadmap
 
-## 🤝 Support
+- [ ] Multi-user authentication
+- [ ] Role-based access control
+- [ ] Email alerts for stockouts
+- [ ] PDF report generation
+- [ ] API endpoints
+- [ ] Mobile app
+- [ ] Advanced ML models (LSTM, Transformer)
+- [ ] Real-time data streaming
 
-This is YOUR codebase now. You can:
-- Edit any file
-- Add new pages
-- Change colors/styling
-- Integrate your models
-- Deploy anywhere
+## 🤝 Contributing
 
-**Good luck with your 1-month demo!** 🚀
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📝 License
+
+MIT License - feel free to use for commercial projects
+
+## 💡 Support
+
+- **Documentation**: See [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Issues**: Open a GitHub issue
+- **Questions**: Check existing issues first
+
+## 🎉 Acknowledgments
+
+- Facebook Prophet for forecasting
+- Groq for fast LLM inference
+- Streamlit for the amazing framework
+- Supabase for database hosting
+
+---
+
+**Ready to deploy?** See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions.
+
+**Need help?** Open an issue or check the troubleshooting section in DEPLOYMENT.md.

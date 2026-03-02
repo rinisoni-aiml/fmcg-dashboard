@@ -1,179 +1,154 @@
-"""Main Dashboard - AI Insights and Alerts"""
-import streamlit as st
-import pandas as pd
+"""Main dashboard."""
+
+from __future__ import annotations
+
+from datetime import datetime
+
 import plotly.graph_objects as go
-import plotly.express as px
-from datetime import datetime, timedelta
+import streamlit as st
 
-def show():
-    """Display main dashboard"""
-    
-    st.markdown(f"# Welcome back, {st.session_state.company_name}!")
-    st.caption(f"Last updated: {datetime.now().strftime('%H:%M:%S')}")
-    
-    if not st.session_state.data_uploaded:
-        st.warning("⚠️ No data uploaded yet. Please upload your data to see insights.")
-        if st.button("Upload Data Now →"):
-            st.session_state.current_page = 'upload'
-            st.rerun()
-        return
-    
-    # Critical Alerts
-    st.markdown("---")
-    show_critical_alerts()
-    
-    # AI Insights
-    st.markdown("---")
-    show_ai_insights()
-    
-    # Key Metrics
-    st.markdown("---")
-    show_key_metrics()
-    
-    # Charts
-    st.markdown("---")
-    show_charts()
+from utils.analytics import collect_normalized_data, dashboard_payload
+from utils.session import navigate_to
 
-def show_critical_alerts():
-    """Display critical alerts"""
-    
-    st.markdown("## 🚨 Critical Alerts")
-    
-    alerts = [
-        ("⚠️", "Low Stock", "Product SKU-123 in Delhi warehouse - Reorder NOW", "critical"),
-        ("⚠️", "High Demand", "Product SKU-456 in Mumbai - Increase stock by 40%", "warning"),
-        ("✅", "Optimal", "Bangalore region - All systems normal", "success"),
-    ]
-    
-    for icon, title, message, alert_type in alerts:
-        if alert_type == "critical":
-            st.markdown(f"""
-            <div class='alert-critical'>
-                <strong>{icon} {title}:</strong> {message}
-            </div>
-            """, unsafe_allow_html=True)
-        elif alert_type == "warning":
-            st.markdown(f"""
-            <div class='alert-critical' style='background-color: #fff3cd; border-left-color: #E46C0A;'>
-                <strong>{icon} {title}:</strong> {message}
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div class='alert-success'>
-                <strong>{icon} {title}:</strong> {message}
-            </div>
-            """, unsafe_allow_html=True)
 
-def show_ai_insights():
-    """Display AI-powered insights"""
-    
-    st.markdown("## 💡 AI-Powered Insights")
-    
-    insights = [
-        "📈 Demand for 'Product A' expected to increase 25% next week due to upcoming festival",
-        "📦 Reduce inventory in West region by 15% - overstocked based on forecast",
-        "✅ Your forecast accuracy improved to 93% this month (+5%)",
-    ]
-    
-    for insight in insights:
-        st.markdown(f"""
-        <div class='alert-info'>
-            {insight}
+def show() -> None:
+    st.markdown(
+        f"""
+        <div class="hero-banner">
+            <h2>Welcome back, {st.session_state.company_name}</h2>
+            <p>Live operations overview for demand, inventory risk, and revenue performance.</p>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(f"Updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-def show_key_metrics():
-    """Display key metrics"""
-    
-    st.markdown("## 📊 Key Metrics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric(
-            "Total Revenue",
-            "₹12.5M",
-            delta="+8%",
-            delta_color="normal"
-        )
-    
-    with col2:
-        st.metric(
-            "Active Products",
-            "234",
-            delta="+12",
-            delta_color="normal"
-        )
-    
-    with col3:
-        st.metric(
-            "Stockout Alerts",
-            "23",
-            delta="-5",
-            delta_color="inverse"
-        )
-    
-    with col4:
-        st.metric(
-            "Forecast Accuracy",
-            "92%",
-            delta="+3%",
-            delta_color="normal"
-        )
+    if not st.session_state.data_uploaded:
+        st.warning("No processed data available yet. Complete data upload to unlock analytics.")
+        if st.button("Go to data upload", type="primary"):
+            navigate_to("upload")
+        return
 
-def show_charts():
-    """Display charts"""
-    
-    st.markdown("## 📈 Analytics")
-    
+    df = collect_normalized_data(st.session_state.uploaded_files)
+    if df.empty:
+        st.error("Data was uploaded but no valid rows are available after normalization.")
+        if st.button("Review upload mapping"):
+            navigate_to("upload")
+        return
+
+    payload = dashboard_payload(df)
+    _render_alerts(payload["alerts"])
+    _render_insights(payload["insights"])
+    _render_kpis(payload["kpis"])
+    _render_charts(payload)
+
+
+def _render_alerts(alerts: list[dict]) -> None:
+    st.markdown("### Critical alerts")
+    for alert in alerts:
+        severity = alert.get("severity", "info")
+        title = alert.get("title", "Alert")
+        message = alert.get("message", "")
+        if severity == "critical":
+            st.error(f"{title}: {message}")
+        elif severity == "warning":
+            st.warning(f"{title}: {message}")
+        else:
+            st.success(f"{title}: {message}")
+
+
+def _render_insights(insights: list[str]) -> None:
+    st.markdown("### AI-generated operational insights")
+    if not insights:
+        st.info("No insights available yet.")
+        return
+    for insight in insights:
+        st.info(insight)
+
+
+def _render_kpis(kpis: dict[str, float]) -> None:
+    st.markdown("### Key metrics")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        _kpi_tile("Total revenue", f"${kpis['total_revenue']:,.0f}", "#0f4c81")
+    with c2:
+        _kpi_tile("Active products", f"{kpis['active_products']:,}", "#0f766e")
+    with c3:
+        _kpi_tile("Stockout alerts", f"{kpis['stockout_alerts']:,}", "#b91c1c")
+    with c4:
+        _kpi_tile("Forecast accuracy", f"{kpis['forecast_accuracy']:.1f}%", "#b45309")
+
+
+def _render_charts(payload: dict[str, object]) -> None:
+    st.markdown("### Analytics")
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        st.markdown("### Demand Forecast - Next 30 Days")
-        
-        # Generate sample data
-        dates = pd.date_range(start=datetime.now(), periods=30, freq='D')
-        historical = [100 + i*2 + (i%7)*10 for i in range(30)]
-        forecast = [historical[-1] + i*2.5 + (i%7)*8 for i in range(30)]
-        
+        st.markdown("#### Demand forecast - next 30 days")
+        hist = payload["forecast_history"]
+        pred = payload["forecast_30"]
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=dates, y=historical,
-            mode='lines',
-            name='Historical',
-            line=dict(color='#2E5C8A', width=2)
-        ))
-        fig.add_trace(go.Scatter(
-            x=dates, y=forecast,
-            mode='lines',
-            name='Forecast',
-            line=dict(color='#E46C0A', width=2, dash='dash')
-        ))
-        fig.update_layout(
-            height=300,
-            margin=dict(l=0, r=0, t=0, b=0),
-            showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.markdown("### Inventory Levels by Region")
-        
-        regions = ['North', 'South', 'East', 'West']
-        stock_levels = [850, 920, 780, 690]
-        
-        fig = go.Figure(data=[
-            go.Bar(
-                x=regions,
-                y=stock_levels,
-                marker_color=['#00B050', '#00B050', '#E46C0A', '#C00000']
+        if not hist.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=hist["date"],
+                    y=hist["demand"],
+                    mode="lines",
+                    name="Historical",
+                    line=dict(color="#0f4c81", width=2.4),
+                )
             )
-        ])
-        fig.update_layout(
-            height=300,
-            margin=dict(l=0, r=0, t=0, b=0),
-            showlegend=False
-        )
+        if not pred.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=pred["date"],
+                    y=pred["predicted_demand"],
+                    mode="lines",
+                    name="Forecast",
+                    line=dict(color="#f97316", width=2.4, dash="dash"),
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=pred["date"].tolist() + pred["date"].tolist()[::-1],
+                    y=pred["upper_bound"].tolist() + pred["lower_bound"].tolist()[::-1],
+                    fill="toself",
+                    fillcolor="rgba(15,76,129,0.12)",
+                    line=dict(color="rgba(255,255,255,0)"),
+                    name="Confidence",
+                )
+            )
+        fig.update_layout(height=350, margin=dict(l=0, r=0, t=5, b=0), hovermode="x unified")
         st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown("#### Demand by region")
+        region_frame = payload["region_frame"]
+        bar = go.Figure(
+            data=[
+                go.Bar(
+                    x=region_frame["region"],
+                    y=region_frame["total_quantity"],
+                    marker_color=["#1f6fb2", "#3b82f6", "#f97316", "#0ea5e9", "#0f766e"][: len(region_frame)],
+                )
+            ]
+        )
+        bar.update_layout(
+            height=350,
+            margin=dict(l=0, r=0, t=5, b=0),
+            xaxis_title="Region",
+            yaxis_title="Quantity",
+        )
+        st.plotly_chart(bar, use_container_width=True)
+
+
+def _kpi_tile(label: str, value: str, accent: str) -> None:
+    st.markdown(
+        f"""
+        <div class="tile" style="border-top:4px solid {accent};">
+            <div class="tile-label">{label}</div>
+            <div class="tile-value">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )

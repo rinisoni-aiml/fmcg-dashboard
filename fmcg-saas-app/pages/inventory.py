@@ -1,97 +1,97 @@
-"""Inventory Optimization Page"""
-import streamlit as st
-import pandas as pd
+"""Inventory optimization page."""
 
-def show():
-    """Display inventory optimization page"""
-    
-    st.markdown("# 📦 Inventory Optimization")
-    
+from __future__ import annotations
+
+import streamlit as st
+
+from utils.analytics import collect_normalized_data, inventory_overview
+from utils.session import navigate_to
+
+
+def show() -> None:
+    st.markdown(
+        """
+        <div class="hero-banner">
+            <h2>Inventory Optimization</h2>
+            <p>Track stock risk across regions and prioritize replenishment actions with better visibility.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if not st.session_state.data_uploaded:
-        st.warning("⚠️ Please upload data first")
+        st.warning("Upload and process data first.")
+        if st.button("Go to upload", type="primary"):
+            navigate_to("upload")
         return
-    
-    # Stock Status Cards
-    st.markdown("### Stock Status Overview")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown("""
-        <div class='metric-card' style='border-color: #00B050;'>
-            <div class='metric-value' style='color: #00B050;'>156</div>
-            <div class='metric-label'>Optimal Stock</div>
-            <p style='color: #666; font-size: 0.9rem; margin-top: 0.5rem;'>Products well-stocked</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class='metric-card' style='border-color: #FFA500;'>
-            <div class='metric-value' style='color: #FFA500;'>34</div>
-            <div class='metric-label'>Low Stock</div>
-            <p style='color: #666; font-size: 0.9rem; margin-top: 0.5rem;'>Need reordering soon</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("""
-        <div class='metric-card' style='border-color: #C00000;'>
-            <div class='metric-value' style='color: #C00000;'>12</div>
-            <div class='metric-label'>Stockout</div>
-            <p style='color: #666; font-size: 0.9rem; margin-top: 0.5rem;'>Immediate action!</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown("""
-        <div class='metric-card' style='border-color: #2E5C8A;'>
-            <div class='metric-value' style='color: #2E5C8A;'>8</div>
-            <div class='metric-label'>Overstock</div>
-            <p style='color: #666; font-size: 0.9rem; margin-top: 0.5rem;'>Reduce orders</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Inventory Table
+
+    df = collect_normalized_data(st.session_state.uploaded_files)
+    if df.empty:
+        st.error("No valid inventory-driving data found.")
+        return
+
+    payload = inventory_overview(df)
+    cards = payload["cards"]
+    table = payload["table"]
+    recommendations = payload["recommendations"]
+
+    st.markdown("### Stock status")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        _stock_tile("Optimal", cards.get("optimal", 0), "#15803d")
+    with c2:
+        _stock_tile("Low Stock", cards.get("low_stock", 0), "#b45309")
+    with c3:
+        _stock_tile("Stockout Risk", cards.get("stockout", 0), "#b91c1c")
+    with c4:
+        _stock_tile("Overstock", cards.get("overstock", 0), "#0f4c81")
+
     st.markdown("---")
-    st.markdown("### Inventory by Warehouse")
-    
-    # Sample data
-    df = pd.DataFrame({
-        'Warehouse': ['Delhi', 'Mumbai', 'Bangalore', 'Chennai'],
-        'Total Items': [156, 203, 178, 145],
-        'Stock Level': ['45% (Low)', '87% (Good)', '62% (Moderate)', '78% (Good)'],
-        'Status': ['⚠️ Alert', '✓ OK', '⚡ Monitor', '✓ OK'],
-    })
-    
-    st.dataframe(df, use_container_width=True, hide_index=True)
-    
-    # Optimization Suggestions
+    st.markdown("### Product and region inventory view")
+    if table.empty:
+        st.info("No inventory rows available.")
+    else:
+        display_df = table[
+            [
+                "product_id",
+                "region",
+                "estimated_stock",
+                "reorder_point",
+                "safety_stock",
+                "days_of_cover",
+                "status",
+                "action",
+            ]
+        ].copy()
+        display_df = display_df.rename(
+            columns={
+                "product_id": "Product",
+                "region": "Region",
+                "estimated_stock": "Estimated Stock",
+                "reorder_point": "Reorder Point",
+                "safety_stock": "Safety Stock",
+                "days_of_cover": "Days of Cover",
+                "status": "Status",
+                "action": "Action",
+            }
+        )
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+
     st.markdown("---")
-    st.markdown("### 🎯 Optimization Suggestions")
-    
-    st.markdown("""
-    <div class='alert-info'>
-        <strong>📦 Transfer Stock:</strong> Move 100 units of SKU-789 from Mumbai to Delhi
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class='alert-critical'>
-        <strong>🔄 Reorder Now:</strong> 500 units of SKU-123 - Will stockout in 3 days
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class='alert-info'>
-        <strong>⬇️ Reduce Orders:</strong> SKU-456 overstocked by 20% - Decrease next order
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # YOUR ML MODEL INTEGRATION POINT
-    st.markdown("---")
-    st.info("""
-    **🔧 Integration Point:**  
-    Replace sample recommendations with your XGBoost model predictions.
-    See `utils/ml_models.py` for the integration template.
-    """)
+    st.markdown("### Recommendations")
+    if not recommendations:
+        st.info("No specific inventory action detected right now.")
+    for rec in recommendations:
+        st.info(rec)
+
+
+def _stock_tile(label: str, value: int, accent: str) -> None:
+    st.markdown(
+        f"""
+        <div class="tile" style="border-top:4px solid {accent};">
+            <div class="tile-label">{label}</div>
+            <div class="tile-value">{value:,}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
