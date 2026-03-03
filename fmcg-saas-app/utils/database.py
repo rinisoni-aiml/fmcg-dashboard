@@ -105,31 +105,50 @@ class DatabaseService:
                 pass
         return (url or "").strip()
 
-    def _initialize(self):
-        """Initialize database connection."""
-        if not self.database_url:
-            self.last_error = "DATABASE_URL is empty"
-            return
-
+    def _try_connect(self, url: str, connect_args: dict) -> bool:
+        """Attempt a database connection with given URL and args."""
         try:
-            connect_args = {}
-            if "supabase" in self.database_url or "neon" in self.database_url:
-                connect_args = {"sslmode": "require"}
-
             self.engine = create_engine(
-                self.database_url,
+                url,
                 poolclass=NullPool,
                 connect_args=connect_args,
             )
             self.Session = sessionmaker(bind=self.engine)
-            # Create tables if they don't exist
             Base.metadata.create_all(self.engine)
             self.last_error = ""
+            return True
         except Exception as e:
             self.last_error = str(e)
-            print(f"Database initialization failed: {e}")
+            print(f"Database connection attempt failed ({url[:60]}...): {e}")
             self.engine = None
             self.Session = None
+            return False
+
+    def _initialize(self):
+        """Initialize database connection with fallback strategies."""
+        if not self.database_url:
+            self.last_error = "DATABASE_URL is empty"
+            return
+
+        url = self.database_url
+
+        # Strategy 1: Try original URL with SSL + timeout
+        for sslmode in ("require", "prefer", "allow"):
+            connect_args = {"sslmode": sslmode, "connect_timeout": 10}
+            if self._try_connect(url, connect_args):
+                return
+
+        # Strategy 2: Try the Supabase pooled endpoint (port 6543)
+        if "supabase" in url and ":5432" in url:
+            pooled_url = url.replace(":5432", ":6543")
+            for sslmode in ("require", "prefer"):
+                connect_args = {"sslmode": sslmode, "connect_timeout": 10}
+                if self._try_connect(pooled_url, connect_args):
+                    return
+
+        # Strategy 3: Try without explicit SSL
+        if self._try_connect(url, {"connect_timeout": 10}):
+            return
 
     def is_connected(self) -> bool:
         """Check if database is connected, attempt re-initialization if not."""
