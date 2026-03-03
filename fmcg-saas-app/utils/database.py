@@ -1,6 +1,7 @@
 """Database integration with Supabase PostgreSQL."""
 
 import os
+import streamlit as st
 from datetime import datetime
 from typing import Dict, Optional, List
 import json
@@ -87,7 +88,11 @@ class DatabaseService:
     """Database service for managing connections and operations."""
 
     def __init__(self):
-        self.database_url = os.getenv("DATABASE_URL", "").strip()
+        self.database_url = os.getenv("DATABASE_URL")
+        if not self.database_url and "DATABASE_URL" in st.secrets:
+            self.database_url = st.secrets["DATABASE_URL"]
+            
+        self.database_url = (self.database_url or "").strip()
         self.engine = None
         self.Session = None
         self._initialize()
@@ -118,8 +123,12 @@ class DatabaseService:
     def is_connected(self) -> bool:
         """Check if database is connected, attempt re-initialization if not."""
         if self.engine is None or self.Session is None:
-            # Refresh standard DATABASE_URL from environment
-            self.database_url = os.getenv("DATABASE_URL", "").strip()
+            # Refresh standard DATABASE_URL from environment or secrets
+            self.database_url = os.getenv("DATABASE_URL")
+            if not self.database_url and "DATABASE_URL" in st.secrets:
+                self.database_url = st.secrets["DATABASE_URL"]
+            
+            self.database_url = (self.database_url or "").strip()
             if self.database_url:
                 self._initialize()
         return self.engine is not None and self.Session is not None
