@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import streamlit as st
 from typing import Dict, List, Optional
 import json
 
@@ -13,8 +14,18 @@ class ChatbotService:
     """Groq integration with data-driven responses."""
 
     def __init__(self) -> None:
-        self.api_key = os.getenv("GROQ_API_KEY", "").strip()
-        self.model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        # Check environment variables first, then streamlit secrets
+        self.api_key = os.getenv("GROQ_API_KEY")
+        if not self.api_key and "GROQ_API_KEY" in st.secrets:
+            self.api_key = st.secrets["GROQ_API_KEY"]
+        
+        self.api_key = (self.api_key or "").strip()
+        
+        self.model = os.getenv("GROQ_MODEL")
+        if not self.model and "GROQ_MODEL" in st.secrets:
+            self.model = st.secrets["GROQ_MODEL"]
+            
+        self.model = self.model or "llama-3.1-8b-instant"
         self.client = Groq(api_key=self.api_key) if self.api_key else None
 
     def get_response(
@@ -25,7 +36,11 @@ class ChatbotService:
     ) -> str:
         """Return assistant response from Groq API with real data context."""
         if not self.client:
-            self.api_key = os.getenv("GROQ_API_KEY", "").strip()
+            self.api_key = os.getenv("GROQ_API_KEY")
+            if not self.api_key and "GROQ_API_KEY" in st.secrets:
+                self.api_key = st.secrets["GROQ_API_KEY"]
+            self.api_key = (self.api_key or "").strip()
+            
             if self.api_key:
                 try:
                     self.client = Groq(api_key=self.api_key)
