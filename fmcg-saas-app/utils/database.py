@@ -88,18 +88,27 @@ class DatabaseService:
     """Database service for managing connections and operations."""
 
     def __init__(self):
-        self.database_url = os.getenv("DATABASE_URL")
-        if not self.database_url and "DATABASE_URL" in st.secrets:
-            self.database_url = st.secrets["DATABASE_URL"]
-            
-        self.database_url = (self.database_url or "").strip()
         self.engine = None
         self.Session = None
-        self._initialize()
+        self.database_url = ""
+        self.last_error = ""
+        # Don't initialize at import time; defer to is_connected()
+
+    def _resolve_url(self) -> str:
+        """Resolve DATABASE_URL from environment or Streamlit secrets."""
+        url = os.getenv("DATABASE_URL", "")
+        if not url:
+            try:
+                if hasattr(st, "secrets") and "DATABASE_URL" in st.secrets:
+                    url = st.secrets["DATABASE_URL"]
+            except Exception:
+                pass
+        return (url or "").strip()
 
     def _initialize(self):
         """Initialize database connection."""
         if not self.database_url:
+            self.last_error = "DATABASE_URL is empty"
             return
 
         try:
@@ -115,7 +124,9 @@ class DatabaseService:
             self.Session = sessionmaker(bind=self.engine)
             # Create tables if they don't exist
             Base.metadata.create_all(self.engine)
+            self.last_error = ""
         except Exception as e:
+            self.last_error = str(e)
             print(f"Database initialization failed: {e}")
             self.engine = None
             self.Session = None
@@ -123,12 +134,7 @@ class DatabaseService:
     def is_connected(self) -> bool:
         """Check if database is connected, attempt re-initialization if not."""
         if self.engine is None or self.Session is None:
-            # Refresh standard DATABASE_URL from environment or secrets
-            self.database_url = os.getenv("DATABASE_URL")
-            if not self.database_url and "DATABASE_URL" in st.secrets:
-                self.database_url = st.secrets["DATABASE_URL"]
-            
-            self.database_url = (self.database_url or "").strip()
+            self.database_url = self._resolve_url()
             if self.database_url:
                 self._initialize()
         return self.engine is not None and self.Session is not None
