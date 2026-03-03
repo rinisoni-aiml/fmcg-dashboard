@@ -1,122 +1,141 @@
-"""AI Chatbot Interface"""
+"""AI assistant page — premium chat using native st.chat_message."""
+
+from __future__ import annotations
+
 import streamlit as st
-from datetime import datetime
 
-def show():
-    """Display AI chatbot interface"""
-    
-    st.markdown("# 🤖 AI Assistant")
-    st.markdown("Ask me anything about your data!")
-    
-    if not st.session_state.data_uploaded:
-        st.warning("⚠️ Please upload data first to get data-specific insights")
-    
+from utils.analytics import build_chat_context, collect_normalized_data, dashboard_payload
+from utils.chatbot import chatbot_service
+from utils.database import db_service
+
+
+def show() -> None:
+    st.markdown(
+        """
+        <div class="hero-banner">
+            <h2>🤖  AI Assistant</h2>
+            <p>Ask operations questions based on your uploaded data — powered by Groq</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Initialize chat history
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = [
-            {"role": "assistant", "content": "Hi! I'm your AI assistant. Ask me anything about your data."}
-        ]
-    
-    # Quick action buttons
-    st.markdown("### Quick Questions")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📦 Low stock products?"):
-            process_query("Which products are low in stock?")
-    
-    with col2:
-        if st.button("📈 Top sellers?"):
-            process_query("Show me top selling products")
-    
-    with col3:
-        if st.button("🎯 Forecast accuracy?"):
-            process_query("What's my forecast accuracy?")
-    
-    st.markdown("---")
-    
-    # Chat history
-    chat_container = st.container()
-    with chat_container:
-        for message in st.session_state.chat_history:
-            if message["role"] == "user":
-                st.markdown(f"""
-                <div style='background: #E8F0F7; padding: 1rem; border-radius: 8px; margin: 0.5rem 0; margin-left: 3rem;'>
-                    <strong>You:</strong><br>{message["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style='background: white; border: 1px solid #ddd; padding: 1rem; border-radius: 8px; margin: 0.5rem 0; margin-right: 3rem;'>
-                    <strong>🤖 AI Assistant:</strong><br>{message["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-    
-    # Chat input
-    st.markdown("---")
-    col1, col2 = st.columns([5, 1])
-    
-    with col1:
-        user_input = st.text_input("Type your question...", key="chat_input", label_visibility="collapsed")
-    
-    with col2:
-        send_button = st.button("Send", type="primary", use_container_width=True)
-    
-    if send_button and user_input:
-        process_query(user_input)
-        st.rerun()
-    
-    # Voice input placeholder
-    st.markdown("---")
-    st.info("🎤 Voice input coming soon!")
-    
-    # YOUR CLAUDE API INTEGRATION POINT
-    st.markdown("---")
-    st.info("""
-    **🔧 Integration Point:**  
-    Replace mock responses with actual Claude API calls.
-    See `utils/chatbot.py` for the integration template.
-    Add your ANTHROPIC_API_KEY to .env file.
-    """)
+    if "chat_history" not in st.session_state or not st.session_state.chat_history:
+        # Try to load from DB
+        loaded = []
+        if db_service.is_connected() and st.session_state.company_name:
+            loaded = db_service.get_chat_history(st.session_state.company_name, limit=30)
 
-def process_query(query):
-    """Process user query"""
-    # Add user message
-    st.session_state.chat_history.append({"role": "user", "content": query})
-    
-    # Mock response - REPLACE WITH CLAUDE API
-    if "low stock" in query.lower():
-        response = """I found 12 products that need immediate attention:
-        
-1. Product A (SKU-123) - 5 units left in Delhi
-2. Product B (SKU-456) - Stockout in Mumbai
-3. Product C (SKU-789) - Below reorder point in Bangalore
+        if loaded:
+            st.session_state.chat_history = loaded
+        else:
+            st.session_state.chat_history = [
+                {
+                    "role": "assistant",
+                    "content": (
+                        "👋 Hi! I'm your FMCG analytics assistant. I can help with:\n\n"
+                        "• **Demand forecasting** — trends, predictions, and recommendations\n"
+                        "• **Inventory optimization** — stockout risks, reorder points\n"
+                        "• **Sales analysis** — top products, regional performance\n"
+                        "• **Operational insights** — actionable recommendations from your data\n\n"
+                        "Ask me anything about your data!"
+                    ),
+                }
+            ]
 
-Would you like me to create reorder recommendations?"""
-    
-    elif "top sell" in query.lower():
-        response = """Here are your top 5 selling products this month:
-        
-1. Product X - ₹2.5M revenue (↑15%)
-2. Product Y - ₹1.8M revenue (↑8%)
-3. Product Z - ₹1.2M revenue (↓3%)
-4. Product A - ₹950K revenue (↑12%)
-5. Product B - ₹780K revenue (↑5%)
+    df = collect_normalized_data(st.session_state.uploaded_files)
 
-Would you like detailed insights on any product?"""
-    
-    elif "forecast accuracy" in query.lower():
-        response = """Your current forecast accuracy is **92%** (MAPE: 8%).
-
-📈 Performance trends:
-- Last month: 89% (improved by 3%)
-- Best performing: North region (95%)
-- Needs improvement: West region (87%)
-
-Your models are performing well! The 92% accuracy is above industry standard."""
-    
+    # Build comprehensive context
+    if not df.empty:
+        full_payload = dashboard_payload(df)
+        context = build_chat_context(
+            company_name=st.session_state.company_name or "Unknown",
+            industry=st.session_state.industry or "FMCG",
+            df=df,
+        )
+        context["inventory"] = full_payload.get("inventory", {})
+        context["alerts"] = full_payload.get("alerts", [])
     else:
-        response = f"I understand you're asking about: {query}\n\nI'm currently in demo mode. In production, I'll provide detailed insights based on your actual data using Claude AI."
-    
-    # Add assistant response
+        context = {
+            "company_name": st.session_state.company_name or "Unknown",
+            "industry": st.session_state.industry or "FMCG",
+            "rows": 0,
+            "kpis": {},
+            "top_regions": [],
+            "insights": [],
+            "inventory": {},
+            "alerts": [],
+        }
+
+    if df.empty:
+        st.warning("📂  No processed data found. Upload data first for detailed insights.")
+
+    # Quick question buttons
+    st.markdown("### ⚡  Quick Questions")
+    q1, q2, q3, q4 = st.columns(4)
+    with q1:
+        if st.button("📦  Low Stock Alerts", use_container_width=True):
+            _process_query("Which products are at risk of stockout? Give me specific product IDs and recommendations.", context)
+            st.rerun()
+    with q2:
+        if st.button("📈  Top Performers", use_container_width=True):
+            _process_query("Show me the top selling products and regions by revenue. Include specific numbers.", context)
+            st.rerun()
+    with q3:
+        if st.button("🔮  Demand Forecast", use_container_width=True):
+            _process_query("What's the demand forecast for the next 7 days? Any trends I should know about?", context)
+            st.rerun()
+    with q4:
+        if st.button("💡  Key Insights", use_container_width=True):
+            _process_query("Give me the top 3 actionable insights from my current data with specific recommendations.", context)
+            st.rerun()
+
+    st.markdown("---")
+
+    # Chat messages using native Streamlit chat
+    for message in st.session_state.chat_history:
+        role = message["role"]
+        with st.chat_message(role, avatar="🤖" if role == "assistant" else "👤"):
+            st.markdown(message["content"])
+
+    # Chat input
+    user_input = st.chat_input("Ask about inventory, forecasts, sales, or any operational question...")
+    if user_input:
+        _process_query(user_input, context)
+        st.rerun()
+
+    # Status
+    st.markdown("---")
+    status_cols = st.columns(3)
+    with status_cols[0]:
+        if chatbot_service.client:
+            st.success(f"✅  AI powered by Groq ({chatbot_service.model})")
+        else:
+            st.info("💡  Add `GROQ_API_KEY` to `.env` for AI-powered responses")
+    with status_cols[1]:
+        if db_service.is_connected():
+            st.success("✅  Chat history saved to Supabase")
+        else:
+            st.info("💾  Session-only chat (add `DATABASE_URL` for persistence)")
+    with status_cols[2]:
+        msg_count = len(st.session_state.chat_history)
+        st.caption(f"💬  {msg_count} messages in conversation")
+
+
+def _process_query(query: str, context: dict) -> None:
+    """Process a user query and get AI response."""
+    st.session_state.chat_history.append({"role": "user", "content": query})
+
+    # Save user message to DB
+    if db_service.is_connected() and st.session_state.company_name:
+        db_service.save_chat_message(st.session_state.company_name, "user", query)
+
+    history = st.session_state.chat_history[:-1]
+    response = chatbot_service.get_response(query, company_data=context, history=history)
+
     st.session_state.chat_history.append({"role": "assistant", "content": response})
+
+    # Save assistant response to DB
+    if db_service.is_connected() and st.session_state.company_name:
+        db_service.save_chat_message(st.session_state.company_name, "assistant", response)

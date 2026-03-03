@@ -1,83 +1,134 @@
-"""Services Selection Page"""
+"""Services configuration page — premium module selection."""
+
+from __future__ import annotations
+
 import streamlit as st
 
-def show():
-    """Display services selection page"""
-    
-    st.markdown("# FMCG Analytics Services")
-    st.markdown("Select the services you need for your business")
-    
-    st.markdown("---")
-    
-    # Active features
-    st.markdown("## ✅ Active Features")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        <div class='feature-card'>
-            <span class='badge-active'>✅ ACTIVE</span>
-            <div style='font-size: 3rem; text-align: center; margin: 1rem 0;'>📈</div>
-            <h3>Demand Forecasting</h3>
-            <p>Predict demand 7-90 days ahead with 90%+ accuracy using AI models</p>
+from utils.session import navigate_to
+
+
+MODULE_INFO = {
+    "forecasting": {
+        "title": "Demand Forecasting",
+        "icon": "🔮",
+        "desc": "Project 7–90 day demand by product and region with Prophet ML models and confidence intervals.",
+        "color": "#0f4c81",
+    },
+    "inventory": {
+        "title": "Inventory Optimization",
+        "icon": "📦",
+        "desc": "Prioritize low cover products, detect stockout risks, and generate replenishment actions.",
+        "color": "#15803d",
+    },
+    "chatbot": {
+        "title": "AI Assistant",
+        "icon": "🤖",
+        "desc": "Ask operational questions against your data powered by Groq LLMs. Get instant insights.",
+        "color": "#ea580c",
+    },
+}
+
+
+def show() -> None:
+    st.markdown(
+        """
+        <div class="hero-banner" style="text-align:center;">
+            <h2>⚙️  Configure Services</h2>
+            <p>Choose which analytics modules to activate for your workspace</p>
         </div>
-        """, unsafe_allow_html=True)
-        st.checkbox("Select", value=True, key="sel_forecast")
-    
-    with col2:
-        st.markdown("""
-        <div class='feature-card'>
-            <span class='badge-active'>✅ ACTIVE</span>
-            <div style='font-size: 3rem; text-align: center; margin: 1rem 0;'>📦</div>
-            <h3>Inventory Optimization</h3>
-            <p>Optimize stock levels, reduce waste, prevent stockouts</p>
-        </div>
-        """, unsafe_allow_html=True)
-        st.checkbox("Select", value=True, key="sel_inventory")
-    
-    with col3:
-        st.markdown("""
-        <div class='feature-card'>
-            <span class='badge-active'>✅ ACTIVE</span>
-            <div style='font-size: 3rem; text-align: center; margin: 1rem 0;'>🤖</div>
-            <h3>AI Assistant</h3>
-            <p>Chat/voice bot - Ask questions, get instant insights</p>
-        </div>
-        """, unsafe_allow_html=True)
-        st.checkbox("Select", value=True, key="sel_chatbot")
-    
-    st.markdown("---")
-    st.markdown("## 🚧 Coming Soon")
-    
-    coming_soon = [
-        ("💹", "Sales Optimization", "Optimize sales strategies and improve conversion rates", "Q2 2024"),
-        ("💰", "Profit & Loss Insights", "AI-powered P&L analysis and recommendations", "Q2 2024"),
-        ("🏷️", "Autonomous Pricing Agent", "Dynamic pricing based on demand, competition", "Q3 2024"),
-        ("🎯", "Autonomous Sales Agent", "AI agent that identifies opportunities", "Q3 2024"),
-        ("🔗", "Supply Chain Analytics", "End-to-end supply chain visibility", "Q3 2024"),
-        ("✅", "Quality Control AI", "Automated quality monitoring", "Q4 2024"),
-    ]
-    
-    col1, col2, col3 = st.columns(3)
-    cols = [col1, col2, col3]
-    
-    for i, (icon, name, desc, timeline) in enumerate(coming_soon):
-        with cols[i % 3]:
-            st.markdown(f"""
-            <div class='feature-card disabled'>
-                <span class='badge-soon'>🚧 COMING SOON</span>
-                <div style='font-size: 3rem; text-align: center; margin: 1rem 0;'>{icon}</div>
-                <h3>{name}</h3>
-                <p>{desc}</p>
-                <p style='color: #999; font-size: 0.9rem;'>Available {timeline}</p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Progress bar
+    st.markdown(
+        """
+        <div style="display:flex;justify-content:center;gap:1.5rem;margin-bottom:1.5rem;">
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+                <div style="width:30px;height:30px;border-radius:50%;background:#22c55e;color:white;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;">✓</div>
+                <span style="font-weight:500;color:#22c55e;">Account</span>
             </div>
-            """, unsafe_allow_html=True)
-    
+            <div style="width:40px;height:2px;background:#22c55e;margin-top:14px;"></div>
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+                <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#0f4c81,#3b8ad9);color:white;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;">2</div>
+                <span style="font-weight:600;color:#0f4c81;">Services</span>
+            </div>
+            <div style="width:40px;height:2px;background:#cbd5e1;margin-top:14px;"></div>
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+                <div style="width:30px;height:30px;border-radius:50%;background:#e2e8f0;color:#64748b;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;">3</div>
+                <span style="color:#94a3b8;font-weight:500;">Data</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="panel-card" style="margin-bottom:1rem;">
+            <strong>Workspace:</strong> {st.session_state.company_name or "N/A"}<br>
+            <span style="color:#475569;font-size:0.88rem;">Toggle modules on or off. You can change these later in Settings.</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Active Modules")
+    cols = st.columns(3)
+    for (key, info), col in zip(MODULE_INFO.items(), cols):
+        with col:
+            _module_card(key=key, **info)
+
     st.markdown("---")
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
+    st.markdown("### Roadmap")
+    future_modules = [
+        ("📈", "Sales Optimization", "Conversion and territory optimization from sales funnel performance."),
+        ("💰", "P&L Insights", "Margin and profitability diagnostics across SKUs and regions."),
+        ("🏷️", "Autonomous Pricing", "Price sensitivity-aware recommendations based on demand and stock."),
+    ]
+    cols = st.columns(3)
+    for (icon, name, description), col in zip(future_modules, cols):
+        with col:
+            st.markdown(
+                f"""
+                <div class="panel-card" style="opacity:0.60;min-height:140px;">
+                    <div style="font-size:1.3rem;margin-bottom:0.3rem;">{icon}</div>
+                    <strong>{name}</strong><br>
+                    <span style="color:#475569;font-size:0.85rem;">{description}</span><br>
+                    <span style="font-size:0.75rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Coming Soon</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("---")
+    enabled_count = sum(bool(v) for v in st.session_state.services.values())
+    st.caption(f"Active modules: **{enabled_count}** / {len(MODULE_INFO)}")
+
+    col1, col2 = st.columns([2, 1])
     with col2:
-        if st.button("Next: Upload Data →", use_container_width=True, type="primary"):
-            st.session_state.current_page = 'upload'
-            st.rerun()
+        if st.button("Next: Upload Data  →", type="primary", use_container_width=True):
+            if enabled_count == 0:
+                st.error("⚠️  Enable at least one module before continuing.")
+                return
+            st.session_state.services_configured = True
+            navigate_to("upload")
+
+
+def _module_card(key: str, title: str, icon: str, desc: str, color: str) -> None:
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
+                <span style="font-size:1.3rem;">{icon}</span>
+                <span style="font-weight:700;font-size:1rem;">{title}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(f'<p style="font-size:0.85rem;color:#475569;margin:0 0 0.5rem 0;">{desc}</p>', unsafe_allow_html=True)
+        st.session_state.services[key] = st.toggle(
+            "Enabled",
+            value=bool(st.session_state.services.get(key, True)),
+            key=f"service_toggle_{key}",
+        )

@@ -1,75 +1,166 @@
-"""Settings Page"""
+"""Settings page — fixed with proper DB methods."""
+
+from __future__ import annotations
+
 import streamlit as st
 
-def show():
-    """Display settings page"""
-    
-    st.markdown("# ⚙️ Settings")
-    
-    tab1, tab2, tab3 = st.tabs(["Profile", "Company", "Data Sources"])
-    
-    with tab1:
-        show_profile()
-    
-    with tab2:
-        show_company()
-    
-    with tab3:
-        show_data_sources()
+from utils.database import db_service
+from utils.session import navigate_to
 
-def show_profile():
-    """Profile settings"""
-    
+
+def show() -> None:
+    st.markdown(
+        """
+        <div class="hero-banner">
+            <h2>🛠  Settings</h2>
+            <p>Manage your profile, company, data sources, and integrations</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    tabs = st.tabs(["👤  Profile", "🏢  Company", "📁  Data Sources", "🔗  Integrations"])
+    with tabs[0]:
+        _show_profile()
+    with tabs[1]:
+        _show_company()
+    with tabs[2]:
+        _show_data_sources()
+    with tabs[3]:
+        _show_integrations()
+
+
+def _show_profile() -> None:
     st.markdown("### User Profile")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.text_input("Name", value="John Doe")
-        st.text_input("Email", value="john@company.com")
-    
-    with col2:
-        st.text_input("Phone", value="+91 1234567890")
-        st.selectbox("Role", ["Admin", "Manager", "Analyst"])
-    
-    if st.button("Save Profile", type="primary"):
-        st.success("✅ Profile updated!")
+    industries = ["FMCG", "Healthcare", "Education", "Fintech", "Logistics", "Cyber Security"]
+    current_industry = st.session_state.industry if st.session_state.industry in industries else "FMCG"
+    with st.form("profile_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            name = st.text_input("Contact name", value=st.session_state.contact_name or "")
+            email = st.text_input("Email", value=st.session_state.email or "")
+        with c2:
+            phone = st.text_input("Phone", value=st.session_state.phone or "")
+            industry = st.selectbox(
+                "Industry",
+                industries,
+                index=industries.index(current_industry),
+            )
+        save = st.form_submit_button("💾  Save Profile", type="primary", width="stretch")
 
-def show_company():
-    """Company settings"""
-    
-    st.markdown("### Company Details")
-    
-    st.text_input("Company Name", value=st.session_state.company_name, disabled=True)
-    st.text_input("Industry", value=st.session_state.industry or "FMCG", disabled=True)
-    
-    st.markdown("---")
-    st.markdown("### Notification Preferences")
-    
-    st.checkbox("Email alerts for critical issues", value=True)
-    st.checkbox("Daily summary reports", value=True)
-    st.checkbox("Weekly performance digest", value=False)
-    
-    if st.button("Save Settings", type="primary"):
-        st.success("✅ Settings saved!")
+    if save:
+        st.session_state.contact_name = name
+        st.session_state.email = email
+        st.session_state.phone = phone
+        st.session_state.industry = industry
+        st.success("✅  Profile updated")
 
-def show_data_sources():
-    """Data sources"""
-    
-    st.markdown("### Connected Data Sources")
-    
-    if st.session_state.uploaded_files:
-        for filename, info in st.session_state.uploaded_files.items():
-            st.markdown(f"""
-            <div class='feature-card'>
-                <strong>📁 {filename}</strong><br>
-                Uploaded: {info['timestamp'][:10]}<br>
-                Rows: {len(info['data'])}
+
+def _show_company() -> None:
+    st.markdown("### Company")
+    company_name = st.text_input("Company name", value=st.session_state.company_name or "")
+    st.text_input("Company ID", value=st.session_state.company_id or "", disabled=True)
+
+    st.markdown("### Enabled Modules")
+    for module_key in ["forecasting", "inventory", "chatbot"]:
+        icons = {"forecasting": "🔮", "inventory": "📦", "chatbot": "🤖"}
+        st.session_state.services[module_key] = st.checkbox(
+            f"{icons.get(module_key, '')}  {module_key.capitalize()}",
+            value=bool(st.session_state.services.get(module_key, True)),
+            key=f"settings_module_{module_key}",
+        )
+
+    if st.button("💾  Save Company Settings", type="primary"):
+        st.session_state.company_name = company_name
+
+        if db_service.is_connected() and st.session_state.email:
+            result = db_service.upsert_company(
+                company_name=company_name,
+                contact_name=st.session_state.contact_name or "User",
+                email=st.session_state.email,
+                phone=st.session_state.phone or "",
+                industry=st.session_state.industry or "FMCG",
+            )
+            if result:
+                st.session_state.company_id = f"COMP-{result.id}"
+                st.success("✅  Saved to Supabase PostgreSQL")
+            else:
+                st.warning("⚠️  Could not persist to database — session values updated only.")
+        else:
+            st.success("✅  Saved in current session")
+
+
+def _show_data_sources() -> None:
+    st.markdown("### Connected Files")
+    if not st.session_state.uploaded_files:
+        st.markdown(
+            """
+            <div class="panel-card" style="text-align:center;padding:1.5rem;">
+                <div style="font-size:2rem;margin-bottom:0.3rem;">📂</div>
+                <p style="margin:0;color:#64748b;">No files processed yet</p>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
     else:
-        st.info("No data sources connected yet")
-    
-    if st.button("➕ Add New Source"):
-        st.session_state.current_page = 'upload'
-        st.rerun()
+        for name, meta in st.session_state.uploaded_files.items():
+            rows = len(meta.get("normalized_data", []))
+            ts = meta.get("timestamp", "")[:19].replace("T", " ")
+            st.markdown(
+                f"""
+                <div class="panel-card" style="margin-bottom:0.55rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <strong>📄  {name}</strong>
+                        <span style="font-size:0.75rem;color:#15803d;font-weight:600;">✅ ACTIVE</span>
+                    </div>
+                    <span style="color:#475569;font-size:0.82rem;">{rows:,} rows · {ts} UTC</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+    if st.button("📁  Add Data Source", width="stretch"):
+        navigate_to("upload")
+
+
+def _show_integrations() -> None:
+    st.markdown("### Integration Status")
+
+    from utils.chatbot import chatbot_service
+    integrations = [
+        ("DATABASE_URL", "PostgreSQL / Supabase", db_service.is_connected()),
+        ("GROQ_API_KEY", "AI Chatbot (Groq LLM)", chatbot_service.client is not None),
+    ]
+
+    for env_key, label, connected in integrations:
+        status_icon = "🟢" if connected else "🔴"
+        status_text = "Connected" if connected else "Not configured"
+        status_color = "#15803d" if connected else "#dc2626"
+        st.markdown(
+            f"""
+            <div class="panel-card" style="margin-bottom:0.55rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <strong>{label}</strong><br>
+                        <code style="font-size:0.78rem;color:#64748b;">{env_key}</code>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:1.1rem;">{status_icon}</span>
+                        <span style="font-size:0.82rem;color:{status_color};font-weight:600;margin-left:0.3rem;">{status_text}</span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+    st.markdown("#### Configuration Reference")
+    st.markdown(
+        """
+        | Variable | Purpose | Required |
+        |---|---|---|
+        | `DATABASE_URL` | PostgreSQL connection string for Supabase | Recommended |
+        | `GROQ_API_KEY` | API key for Groq-hosted LLMs | For AI Assistant |
+        | `GROQ_MODEL` | Model override (default: `llama-3.1-8b-instant`) | Optional |
+        """
+    )
