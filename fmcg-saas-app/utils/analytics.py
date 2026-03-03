@@ -27,6 +27,11 @@ class ForecastResult:
     history: pd.DataFrame
     forecast: pd.DataFrame
     confidence_level: float
+    diagnostics: Dict = None
+
+    def __post_init__(self):
+        if self.diagnostics is None:
+            self.diagnostics = {}
 
 
 def _to_lower(values: Iterable[str]) -> list[str]:
@@ -253,15 +258,16 @@ def generate_forecast(
         empty = pd.DataFrame(columns=["date", "demand"])
         return ForecastResult(history=empty, forecast=empty, confidence_level=0.0)
 
-    # Use the Prophet-based forecaster
-    history_df, forecast_df, confidence = demand_forecaster.predict(
+    # Use the Prophet-based forecaster (now returns 4 values)
+    history_df, forecast_df, confidence, diagnostics = demand_forecaster.predict(
         df, horizon_days=horizon_days, product_id=product_id, region=region
     )
     
     return ForecastResult(
         history=history_df,
         forecast=forecast_df,
-        confidence_level=round(confidence, 1)
+        confidence_level=round(confidence, 1),
+        diagnostics=diagnostics,
     )
 
 

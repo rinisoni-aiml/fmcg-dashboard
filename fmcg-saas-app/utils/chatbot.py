@@ -25,6 +25,14 @@ class ChatbotService:
     ) -> str:
         """Return assistant response from Groq API with real data context."""
         if not self.client:
+            self.api_key = os.getenv("GROQ_API_KEY", "").strip()
+            if self.api_key:
+                try:
+                    self.client = Groq(api_key=self.api_key)
+                except Exception as e:
+                    print(f"Failed to initialize Groq client: {e}")
+            
+        if not self.client:
             return self._fallback_response(user_query, company_data)
 
         try:
