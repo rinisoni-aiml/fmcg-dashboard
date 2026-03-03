@@ -496,7 +496,10 @@ def render_sidebar() -> None:
             st.caption("🟢 Database: Connected")
             st.session_state.db_ready = True
         else:
-            st.caption("🔴 Database: Not configured")
+            err = db_service.last_error
+            st.caption(f"🔴 Database: Not connected")
+            if err:
+                st.caption(f"⚠️ {err[:120]}")
             st.session_state.db_ready = False
 
         st.markdown("---")
